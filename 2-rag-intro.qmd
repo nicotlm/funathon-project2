@@ -151,7 +151,7 @@ LLMLAB_URL=https://llm.lab.sspcloud.fr/api
 
 ### Getting your llm.lab API key
 
-1. Go to the llm.lab interface and sign in with your SSPCloud account.
+1. Go to the [llm.lab interface](https://llm.lab.sspcloud.fr/) and sign in with your SSPCloud account.
 2. Open **Settings** (top right) → **Account** → **API Keys**.
 3. Generate a new key and copy it into `LLMLAB_API_KEY`.
 
