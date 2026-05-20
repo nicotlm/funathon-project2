@@ -237,3 +237,16 @@ results_df = annotations_df.with_columns(
     )
     .alias("pred")
 ).unnest()
+
+# Metrics
+results_df = results_df.with_columns(
+    retriever_hit=pl.col("code").is_in(pl.col("retrieved_codes")),
+    pipeline_correct=pl.col("code") == pl.col("nace_code"),
+).with_columns(
+    llm_correct_given_retriever=pl.when(pl.col("retriever_hit"))
+    .then(pl.col("pipeline_correct"))
+    .otherwise(None),
+)
+
+# Q1
+results_df["retriever_hit"].mean()
