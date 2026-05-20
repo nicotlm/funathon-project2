@@ -135,6 +135,10 @@ Example (`scratch.py` at the root of the repo):
 
 ```python
 # %%
+# If you need to change working directory (default is your interactive .py file location)
+# import os
+# os.chdir("<NEW_RELATIVE_LOCATION>")
+
 import pandas as pd
 
 df = pd.read_csv("data/sample.csv")

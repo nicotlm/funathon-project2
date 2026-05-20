@@ -90,7 +90,8 @@ client_llmlab = OpenAI(
 client_qdrant = QdrantClient(
     url=os.environ["QDRANT_URL"],
     api_key=os.environ["QDRANT_API_KEY"],
-    port=os.environ["QDRANT_API_PORT"]
+    port=os.environ["QDRANT_API_PORT"],
+    check_compatibility=False
 )
 ```
 
