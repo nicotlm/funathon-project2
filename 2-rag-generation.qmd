@@ -124,9 +124,9 @@ Temperature controls the degree of randomness in generation. For a closed-list c
 
 Before running the pipeline on the full dataset, test each component step by step.
 
-The following questions will follow the steps described below. 
+The following questions will follow the steps described below.
 
-![Steps for the Exercice 1](img/generation_workflow_exercice1.png) 
+![Steps for the Exercice 1](img/generation_workflow_exercice1.png)
 
 ::: {.callout-tip collapse="false" icon=false}
 ## `<i class="bi bi-book"></i>`{=html} Exercise 1: Test the pipeline on a single example
@@ -232,7 +232,7 @@ print(descriptions_retrieved[0])
 
 ---
 
-### Question 3 — Prompt construction
+### Prompt construction
 
 The quality of the prompt directly affects the LLM's output. A RAG prompt typically has two parts:
 
@@ -288,7 +288,7 @@ USER_PROMPT_TEMPLATE = """\
 
 ---
 
-### Question 4 — LLM inference
+### Question 3 — LLM inference
 
 Compile the prompt with the retrieved candidates and run inference. The steps are:
 
