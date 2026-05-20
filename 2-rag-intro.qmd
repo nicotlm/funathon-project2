@@ -191,3 +191,5 @@ try:
 except KeyError:
     raise ValueError("QDRANT_URL is not set — check your .env file")
 ```
+
+If `load_dotenv()` doesn't work but every thing seems fine, don't forget to make sure that Python runs in the right working directory with `os.getcwd()`and `os.chdir("funathon-project2)`.
