@@ -1,6 +1,7 @@
 import os
 from typing import List
 
+import polars as pl
 from dotenv import load_dotenv
 from openai import OpenAI
 from qdrant_client import QdrantClient
@@ -24,8 +25,19 @@ client_qdrant = QdrantClient(
 )
 
 
-emb_model = "qwen3-embedding-8b"
+# Models
+EMB_MODEL_NAME = "qwen3-embedding-8b"  # Embedding model
+GEN_MODEL_NAME = "gemma4-26b-moe"  # Generative model
+
+# Qdrant
 COLLECTION_NAME = "nace-collection"
+RETRIEVER_LIMIT = 5  # Number of candidates returned by the vector search
+
+# Generation
+TEMPERATURE = 0.1  # Low temperature → more deterministic, reproducible outputs
+
+# Evaluation
+SAMPLE_SIZE = 100  # Number of activities to evaluate (increase for more robust results)
 
 # Q1
 
@@ -36,7 +48,9 @@ def get_embeddings(
     emb_model: str,
 ) -> List[float]:
     try:
-        response = client_llmlab.embeddings.create(model=emb_model, input=txt_to_embed)
+        response = client_llmlab.embeddings.create(
+            model=EMB_MODEL_NAME, input=txt_to_embed
+        )
 
         return response.data[0].embedding
 
@@ -46,12 +60,12 @@ def get_embeddings(
 
 activity = "Installation, maintenance and repair of residential air conditioning systems for private customers"
 
-get_embeddings(activity, client_llmlab, emb_model=emb_model)
+get_embeddings(activity, client_llmlab, emb_model=EMB_MODEL_NAME)
 
 
 # Q2
-search_embedding = get_embeddings(activity, client_llmlab, emb_model=emb_model)
-RETRIEVER_LIMIT = 5
+# need polars
+search_embedding = get_embeddings(activity, client_llmlab, emb_model=EMB_MODEL_NAME)
 
 points = client_qdrant.query_points(
     collection_name=COLLECTION_NAME,
@@ -59,7 +73,6 @@ points = client_qdrant.query_points(
     limit=RETRIEVER_LIMIT,
 )
 
-import polars as pl
 
 points_df = (
     pl.DataFrame(points.model_dump())
