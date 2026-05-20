@@ -173,18 +173,18 @@ nace[22]
 
 ### Question 2
 
-- Build a class `NaceDocument` that will help you handle your NACE documents : 
+- Build a class `NaceDocument` that will help you handle your NACE documents :
 
     - Cleans features ('HEADING', 'Includes', etc.)
     - Checks your data (example: hierarchical coherence)
     - Creates a structured text for each code :
-        - example: attribute `text`, created by a `to_embedding_text` method, 
-        - this text will be ready to be embedded, 
-        - It would be best to parametrize whether to include or not each possible field (e.g : text with or without "Excludes" feature). 
+        - example: attribute `text`, created by a `to_embedding_text` method,
+        - this text will be ready to be embedded,
+        - It would be best to parametrize whether to include or not each possible field (e.g : text with or without "Excludes" feature).
 
 - Create all `NaceDocument` instances from `nace` list.
 
-See an example of a cleaned and ready text for embedding: 
+See an example of a cleaned and ready text for embedding:
 
 ```markdown
 # Code: 03.11
@@ -303,11 +303,11 @@ for nace_code in nace:
     nace_documents.append(
         NaceDocument.from_raw(
             raw=nace_code,
-            with_includes_also=True, 
+            with_includes_also=True,
             with_excludes=True
         )
     )
-    
+
 
 
 ```
@@ -369,7 +369,7 @@ For later use, we need to know the dimension of the vectors output by our model:
 
 #| label: embedding_params
 
-emb_model = "qwen3-embedding-8b"
+EMB_MODEL_NAME = "qwen3-embedding-8b"
 emb_dim = 4096
 ```
 
@@ -564,7 +564,7 @@ class NaceDocument:
     ) -> List[float]:
         try:
             response = client_llmlab.embeddings.create(
-                model=emb_model,
+                model=EMB_MODEL_NAME,
                 input=self.text
             )
 
@@ -591,7 +591,7 @@ for nace_code in nace[:sample_size]:
     nace_documents.append(
         NaceDocument.from_raw(
             raw=nace_code,
-            with_includes_also=True, 
+            with_includes_also=True,
             with_excludes=True
         )
     )
@@ -599,7 +599,7 @@ for nace_code in nace[:sample_size]:
 for nace_doc in nace_documents:
     nace_doc.get_embeddings(
         client_llmlab,
-        emb_model,
+        EMB_MODEL_NAME,
     )
 
 
@@ -633,7 +633,7 @@ print(f"\nLength of this vector: {len(nace_documents[0].vector)}")
 ```python
 
 {
-    "id": ..., # strictly standardized id 
+    "id": ..., # strictly standardized id
     "vector": ..., # embedding_vector
     "payload": {
         "code": ...,
@@ -744,7 +744,7 @@ class NaceDocument:
     ) -> List[float]:
         try:
             response = client_llmlab.embeddings.create(
-                model=emb_model,
+                model=EMB_MODEL_NAME,
                 input=self.text
             )
 
@@ -794,13 +794,13 @@ nace_points = []
 for nace_code in nace[:sample_size]:
     nace_doc = NaceDocument.from_raw(
         raw=nace_code,
-        with_includes_also=True, 
+        with_includes_also=True,
         with_excludes=True
     )
 
     nace_doc.get_embeddings(
         client_llmlab,
-        emb_model,
+        EMB_MODEL_NAME,
     )
 
     nace_points.append(
@@ -822,13 +822,13 @@ nace_points = []
 for nace_code in nace:
     nace_doc = NaceDocument.from_raw(
         raw=nace_code,
-        with_includes_also=True, 
+        with_includes_also=True,
         with_excludes=True
     )
 
     nace_doc.get_embeddings(
         client_llmlab,
-        emb_model,
+        EMB_MODEL_NAME,
     )
 
     nace_points.append(
@@ -934,7 +934,7 @@ print(count)
 
 ## PointStruct
 
-`PointStruct` is a Pydantic model provided by the qdrant_client library that represents a single vector database entry. 
+`PointStruct` is a Pydantic model provided by the qdrant_client library that represents a single vector database entry.
 It bundles together the three components Qdrant needs to store and query a point:
 
 - a unique id,
@@ -954,7 +954,7 @@ Here, we intentionally adopt a step-by-step approach to support learning. In a p
 
 Advanced users are welcome to give it a try.
 
-Below, please find a non-exhaustive list of good practices for production-grade workflows : 
+Below, please find a non-exhaustive list of good practices for production-grade workflows :
 
 - __Batching__: Process multiple documents per request to reduce overhead and improve throughput.
 - __Concurrency Limits__: Restrict the number of simultaneous requests to avoid overwhelming the server.
