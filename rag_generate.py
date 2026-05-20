@@ -246,22 +246,60 @@ results_df = results_df.with_columns(
     llm_correct_given_retriever=pl.when(pl.col("retriever_hit"))
     .then(pl.col("pipeline_correct"))
     .otherwise(None),
+    pipeline_correct=pl.col("pipeline_correct").fill_null(
+        False
+    ),  # if no prediction - pipeline is false
 )
 
 # Q1
 results_df["retriever_hit"].value_counts()
-results_df["retriever_hit"].mean()
+retriever_accuracy = results_df["retriever_hit"].mean()
 
 # Q2
 results_df.filter(pl.col("retriever_hit"))["llm_correct_given_retriever"].value_counts()
-results_df.filter(pl.col("retriever_hit"))["llm_correct_given_retriever"].mean()
-
-# Q3
-results_df["pipeline_correct"].value_counts(normalize=True).filter(
-    pl.col("pipeline_correct")
-)["proportion"][
-    0
-]  # To avoid filtering null values with results_df["pipeline_correct"].mean()
-results_df["retriever_hit"].mean() * results_df.filter(pl.col("retriever_hit"))[
+llm_accuracy = results_df.filter(pl.col("retriever_hit"))[
     "llm_correct_given_retriever"
 ].mean()
+
+# Q3
+pipeline_accuracy = results_df["pipeline_correct"].mean()
+
+# Q4
+n_total = len(results_df)
+n_retriever_miss = (
+    results_df["retriever_hit"]
+    .value_counts()
+    .filter(~pl.col("retriever_hit"))["count"][0]
+)
+n_llm_miss = (
+    results_df["llm_correct_given_retriever"]
+    .value_counts()
+    .filter(~pl.col("llm_correct_given_retriever"))["count"][0]
+)
+
+n_correct = (
+    results_df["pipeline_correct"]
+    .value_counts()
+    .filter(pl.col("pipeline_correct"))["count"][0]
+)
+
+# Q4
+print(
+    "\n".join(
+        [
+            "=" * 52,
+            "      DASHBOARD — RAG PIPELINE NACE 2.1",
+            "=" * 52,
+            f"  Activities processed        : {n_total:>6}",
+            f"  Correctly coded             : {n_correct:>6}  ({pipeline_accuracy:.1%})",
+            "",
+            f"  Retriever@{RETRIEVER_LIMIT} accuracy        : {retriever_accuracy:>6.1%}",
+            f"  LLM accuracy (conditional)  : {llm_accuracy:>6.1%}",
+            f"  Pipeline accuracy           : {pipeline_accuracy:>6.1%}",
+            "",
+            f"  Retriever errors            : {n_retriever_miss:>6}  ({n_retriever_miss / n_total:.1%})",
+            f"  LLM errors                  : {n_llm_miss:>6}  ({n_llm_miss / n_total:.1%})",
+            "=" * 52,
+        ]
+    )
+)
