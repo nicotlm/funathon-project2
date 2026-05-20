@@ -167,6 +167,11 @@ LLMLAB_URL=https://llm.lab.sspcloud.fr/api
 
 ![Retrieving the Qdrant token](img/qdrant_token.png)
 
+You can also access your Qdrant Api key when you click on "Open" the Qdrant service.
+The password shown in the pop-up bubble is your API key.
+
+![Another way to retrieve the Qdrant token](img/qdrant_token_2.png)
+
 ## Loading credentials in Python
 
 Once your `.env` file is ready, load the variables at the start of each notebook:
