@@ -82,3 +82,55 @@ points_df = (
 )
 
 points_df[0]
+
+
+# Q4
+
+SYSTEM_PROMPT = """\
+You are an expert classifier for the NACE 2.1 nomenclature (Statistical Classification of Economic Activities in the European Community).
+
+Given a company activity description and a short list of candidate NACE codes, your job is to pick the single most appropriate code from the candidates — or to declare the activity not codable if the description is too ambiguous.
+
+Always reply with a valid JSON object matching the requested schema. No explanations, no extra text.
+"""
+
+USER_PROMPT_TEMPLATE = """\
+## Activity to classify
+{activity}
+
+## Candidate NACE codes and their explanatory notes
+{proposed_nace_descriptions}
+
+## Rules
+- Pick exactly one code from this list: [{proposed_nace_codes}]. Do not invent codes outside the list.
+- If several activities are mentioned, only consider the first one.
+- If the description is too vague to decide, return `nace_code: null` and `codable: false`.
+
+## Output — valid JSON only
+{{
+  "nace_code": "<one code from the candidate list, or null>",
+  "codable": <true | false>,
+  "confidence": <float between 0.0 and 1.0>
+}}
+"""
+
+import json
+
+user_prompt = USER_PROMPT_TEMPLATE.format(
+    activity=activity,
+    proposed_nace_descriptions="## " + "\n\n## ".join(points_df["text"]),
+    proposed_nace_codes=", ".join(points_df["code"]),
+)
+
+response = client_llmlab.chat.completions.create(
+    model=GEN_MODEL_NAME,
+    messages=[
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": user_prompt},
+    ],
+    temperature=TEMPERATURE,
+    response_format={"type": "json_object"},
+)
+
+llm_response = json.loads(response.choices[0].message.content)
+print(json.dumps(llm_response, indent=2))
