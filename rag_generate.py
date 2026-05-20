@@ -134,3 +134,106 @@ response = client_llmlab.chat.completions.create(
 
 llm_response = json.loads(response.choices[0].message.content)
 print(json.dumps(llm_response, indent=2))
+
+
+# Load data
+import duckdb
+
+con = duckdb.connect(database=":memory:")
+
+con.execute("INSTALL httpfs;")
+con.execute("LOAD httpfs;")
+
+query_definition = f"""
+SELECT *
+FROM read_parquet(
+  'https://minio.lab.sspcloud.fr/projet-formation/diffusion/funathon/2026/project2/generation_None_temp08.parquet'
+)
+USING SAMPLE {SAMPLE_SIZE}
+"""
+
+annotations = con.sql(query_definition).to_df().to_dict(orient="records")
+print(f"Dataset loaded: {len(annotations)} rows")
+print(f"Keys: {list(annotations[0].keys())}")
+annotations[:2]
+
+# Pipeline with polars
+
+
+def run_rag_pipeline(activity: str) -> dict:
+    """
+    Run the full RAG pipeline for a single activity label.
+
+    Parameters
+    ----------
+    activity : str
+        Free-text economic activity label to be coded.
+
+    Returns
+    -------
+    dict with keys:
+        - nace_code (str | None) : predicted NACE code
+        - codable (bool)        : True if the label could be coded
+        - confidence (float)    : confidence score (0–1)
+        - retrieved_codes (list): candidates returned by the retriever
+    """
+    # --- Step 1: Embedding ---
+    emb_response = client_llmlab.embeddings.create(model=EMB_MODEL_NAME, input=activity)
+    embedding = emb_response.data[0].embedding
+
+    # --- Step 2: Retrieval ---
+    points = client_qdrant.query_points(
+        collection_name=COLLECTION_NAME,
+        query=embedding,
+        limit=RETRIEVER_LIMIT,
+    )
+
+    points_df = (
+        pl.DataFrame(points.model_dump())
+        .unnest()
+        .unnest()
+        .select(["id", "score", "code", "text"])
+    )
+
+    # --- Step 3: Prompt construction ---
+    user_prompt = USER_PROMPT_TEMPLATE.format(
+        activity=activity,
+        proposed_nace_descriptions="## " + "\n\n## ".join(points_df["text"]),
+        proposed_nace_codes=", ".join(points_df["code"]),
+    )
+
+    # --- Step 4: LLM inference ---
+    gen_response = client_llmlab.chat.completions.create(
+        model=GEN_MODEL_NAME,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": user_prompt},
+        ],
+        temperature=TEMPERATURE,
+        response_format={"type": "json_object"},
+    )
+
+    result = json.loads(gen_response.choices[0].message.content)
+    # Keep retrieved candidates for retriever evaluation
+    result["retrieved_codes"] = points_df["code"]
+
+    return result
+
+
+annotations_df = pl.DataFrame(annotations)
+
+results_df = annotations_df.with_columns(
+    pl.col("label")
+    .map_elements(
+        lambda a: run_rag_pipeline(a),
+        return_dtype=pl.Struct(
+            {
+                "nace_code": pl.Utf8,
+                "codable": pl.Boolean,
+                "confidence": pl.Float64,
+                "retrieved_codes": pl.List(pl.String),
+            }
+        ),
+    )
+    .alias("pred")
+).unnest()
