@@ -249,7 +249,19 @@ results_df = results_df.with_columns(
 )
 
 # Q1
+results_df["retriever_hit"].value_counts()
 results_df["retriever_hit"].mean()
 
 # Q2
+results_df.filter(pl.col("retriever_hit"))["llm_correct_given_retriever"].value_counts()
 results_df.filter(pl.col("retriever_hit"))["llm_correct_given_retriever"].mean()
+
+# Q3
+results_df["pipeline_correct"].value_counts(normalize=True).filter(
+    pl.col("pipeline_correct")
+)["proportion"][
+    0
+]  # To avoid filtering null values with results_df["pipeline_correct"].mean()
+results_df["retriever_hit"].mean() * results_df.filter(pl.col("retriever_hit"))[
+    "llm_correct_given_retriever"
+].mean()
