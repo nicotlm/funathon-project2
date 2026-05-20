@@ -250,3 +250,6 @@ results_df = results_df.with_columns(
 
 # Q1
 results_df["retriever_hit"].mean()
+
+# Q2
+results_df.filter(pl.col("retriever_hit"))["llm_correct_given_retriever"].mean()
