@@ -189,7 +189,7 @@ def run_rag_pipeline(activity: str) -> dict:
     )
 
     points_df = (
-        pl.DataFrame(points.model_dump())
+        pl.DataFrame(points.model_dump(), schema_overrides={"points": pl.Struct})
         .unnest()
         .unnest()
         .select(["id", "score", "code", "text"])
@@ -231,7 +231,7 @@ results_df = annotations_df.with_columns(
                 "nace_code": pl.Utf8,
                 "codable": pl.Boolean,
                 "confidence": pl.Float64,
-                "retrieved_codes": pl.List(pl.String),
+                "retrieved_codes": pl.List(pl.Utf8),
             }
         ),
     )
@@ -239,16 +239,21 @@ results_df = annotations_df.with_columns(
 ).unnest()
 
 # Metrics
-results_df = results_df.with_columns(
-    retriever_hit=pl.col("code").is_in(pl.col("retrieved_codes")),
-    pipeline_correct=pl.col("code") == pl.col("nace_code"),
-).with_columns(
-    llm_correct_given_retriever=pl.when(pl.col("retriever_hit"))
-    .then(pl.col("pipeline_correct"))
-    .otherwise(None),
-    pipeline_correct=pl.col("pipeline_correct").fill_null(
-        False
-    ),  # if no prediction - pipeline is false
+results_df = (
+    results_df.with_columns(
+        retriever_hit=pl.col("code").is_in(pl.col("retrieved_codes")),
+        pipeline_correct=pl.col("code") == pl.col("nace_code"),
+    )
+    .with_columns(
+        pipeline_correct=pl.col("pipeline_correct").fill_null(
+            False  # if no prediction - pipeline is false
+        )
+    )
+    .with_columns(
+        llm_correct_given_retriever=pl.when(pl.col("retriever_hit"))
+        .then(pl.col("pipeline_correct"))
+        .otherwise(None),
+    )
 )
 
 # Q1
@@ -256,16 +261,21 @@ results_df["retriever_hit"].value_counts()
 retriever_accuracy = results_df["retriever_hit"].mean()
 
 # Q2
+results_df["llm_correct_given_retriever"].value_counts()
 results_df.filter(pl.col("retriever_hit"))["llm_correct_given_retriever"].value_counts()
 llm_accuracy = results_df.filter(pl.col("retriever_hit"))[
     "llm_correct_given_retriever"
 ].mean()
 
 # Q3
+results_df["pipeline_correct"].value_counts()
 pipeline_accuracy = results_df["pipeline_correct"].mean()
+pipeline_accuracy
+llm_accuracy * retriever_accuracy
 
 # Q4
 n_total = len(results_df)
+
 n_retriever_miss = (
     results_df["retriever_hit"]
     .value_counts()
@@ -302,4 +312,87 @@ print(
             "=" * 52,
         ]
     )
+)
+
+
+# Q5
+from plotnine import (
+    aes,
+    geom_boxplot,
+    geom_line,
+    geom_point,
+    ggplot,
+    labs,
+    scale_color_manual,
+    scale_linetype_manual,
+    theme_minimal,
+)
+
+# --- Left: confidence distribution by correctness ---
+results_plot = results_df.with_columns(
+    correctness=pl.when(pl.col("pipeline_correct"))
+    .then(pl.lit("Correct"))
+    .otherwise(pl.lit("Incorrect"))
+)
+
+p1 = (
+    ggplot(results_plot.to_pandas(), aes(x="correctness", y="confidence"))
+    + geom_boxplot()
+    + labs(
+        title="Confidence distribution by pipeline correctness",
+        x="Prediction correct",
+        y="Confidence score",
+    )
+    + theme_minimal()
+)
+
+# --- Right: precision and coverage vs confidence threshold ---
+thresholds = [i / 10 for i in range(1, 10)]
+rows = []
+for t in thresholds:
+    subset = results_df.filter(pl.col("confidence") >= t)
+    if len(subset) > 0:
+        rows += [
+            {
+                "threshold": t,
+                "metric": "Precision",
+                "value": subset["pipeline_correct"].mean(),
+            },
+            {
+                "threshold": t,
+                "metric": "Coverage",
+                "value": len(subset) / len(results_df),
+            },
+        ]
+
+df_thresh = pl.DataFrame(rows)
+
+p2 = (
+    ggplot(
+        df_thresh.to_pandas(),
+        aes(x="threshold", y="value", color="metric", linetype="metric"),
+    )
+    + geom_line()
+    + geom_point()
+    + scale_color_manual(values={"Precision": "steelblue", "Coverage": "coral"})
+    + scale_linetype_manual(values={"Precision": "solid", "Coverage": "dashed"})
+    + labs(
+        title="Precision and coverage vs. confidence threshold",
+        x="Confidence threshold",
+        y="Value",
+        color="",
+        linetype="",
+    )
+    + theme_minimal()
+)
+
+p1.save(
+    filename="../p1.png",  # or "plot.pdf", "plot.svg", etc.
+)
+
+p2.save(
+    filename="../p2.png",  # or "plot.pdf", "plot.svg", etc.
+    width=8,
+    height=6,
+    dpi=300,
 )
