@@ -25,7 +25,9 @@ client_qdrant = QdrantClient(
 
 
 emb_model = "qwen3-embedding-8b"
-COLLECTION_NAME = "nace-collection-test"
+COLLECTION_NAME = "nace-collection"
+
+# Q1
 
 
 def get_embeddings(
@@ -45,3 +47,25 @@ def get_embeddings(
 activity = "Installation, maintenance and repair of residential air conditioning systems for private customers"
 
 get_embeddings(activity, client_llmlab, emb_model=emb_model)
+
+
+# Q2
+search_embedding = get_embeddings(activity, client_llmlab, emb_model=emb_model)
+RETRIEVER_LIMIT = 5
+
+points = client_qdrant.query_points(
+    collection_name=COLLECTION_NAME,
+    query=search_embedding,
+    limit=RETRIEVER_LIMIT,
+)
+
+import polars as pl
+
+points_df = (
+    pl.DataFrame(points.model_dump())
+    .unnest()
+    .unnest()
+    .select(["id", "score", "code", "text"])
+)
+
+points_df[0]
