@@ -1,10 +1,19 @@
+import os
+from dataclasses import dataclass, field
+from typing import List, Optional
+from uuid import NAMESPACE_DNS, uuid5
+
+import duckdb
 from dotenv import load_dotenv
+from more_itertools import chunked
+from openai import OpenAI
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, PointStruct, VectorParams
+from tqdm import tqdm
 
 os.chdir("funathon-project2")
 load_dotenv()
 
-
-import duckdb
 
 con = duckdb.connect(database=":memory:")
 
@@ -16,13 +25,6 @@ query_definition = f"SELECT * FROM read_csv('{path_nace}')"
 table = con.execute(query_definition).fetch_arrow_table()
 nace = table.to_pylist()
 
-import os
-from dataclasses import dataclass, field
-from typing import List, Optional
-from uuid import NAMESPACE_DNS, uuid5
-
-from openai import OpenAI
-from qdrant_client.models import PointStruct
 
 client_llmlab = OpenAI(
     base_url=os.environ["LLMLAB_URL"],
@@ -33,7 +35,6 @@ NACE_NAMESPACE = uuid5(NAMESPACE_DNS, "nace-rev2")
 emb_model = "qwen3-embedding-8b"
 emb_dim = 4096
 
-from qdrant_client import QdrantClient
 
 client_qdrant = QdrantClient(
     url=os.environ["QDRANT_URL"],
@@ -171,7 +172,7 @@ class NaceDocument:
 
 nace_points = []
 
-for nace_code in nace[:100]:
+for nace_code in nace:
     nace_doc = NaceDocument.from_raw(
         raw=nace_code, with_includes_also=True, with_excludes=True
     )
@@ -183,8 +184,6 @@ for nace_code in nace[:100]:
 
     nace_points.append(nace_doc.to_qdrant_point())
 
-
-from qdrant_client.models import Distance, VectorParams
 
 COLLECTION_NAME = "nace-collection"
 
@@ -198,8 +197,6 @@ client_qdrant.create_collection(
     vectors_config=VectorParams(size=emb_dim, distance=Distance.COSINE),
 )
 
-from more_itertools import chunked
-from tqdm import tqdm
 
 BATCH_SIZE = 16
 batches = list(chunked(nace_points, BATCH_SIZE))
