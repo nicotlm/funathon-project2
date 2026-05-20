@@ -43,9 +43,9 @@ Key properties:
 In this tutorial we use **Qdrant**, an open-source vector database, to store and query the embeddings of all NACE 2.1 code descriptions.
 :::
 
-## RAG or fine-tuning?
+## RAG or fine-tuning a usual ML classifier?
 
-Fine-tuning is a legitimate alternative that can yield excellent results when a large annotated dataset is available and the nomenclature is stable. The catch is that retraining is required each time the nomenclature changes, and building a quality training set takes real annotation effort.
+Fine-tuning a usual ML classifier (like a FastText model) is a legitimate alternative that can yield excellent results when a large annotated dataset is available and the nomenclature is stable. The catch is that retraining is required each time the nomenclature changes, and building a quality training set takes real annotation effort.
 
 
 With RAG, the __knowledge lives in the [vector database](#vec-db) rather than in the model weights__. Updating the nomenclature means re-indexing the changed entries — no retraining needed. This makes it a natural fit for statistical nomenclatures, which do evolve over time (NACE 2.1 being a recent example). That said, RAG is not annotation-free either: a labelled evaluation set is still needed to measure pipeline performance and tune its components. The right choice between the two approaches depends on data availability, update frequency, and available compute.
